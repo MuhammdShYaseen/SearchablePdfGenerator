@@ -37,7 +37,20 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IText7PdfBuilder>();
         services.AddSingleton<ISearchablePdfService, SearchablePdfService>();
-        services.AddSingleton<PageOrientationDetector>();
+        services.AddSingleton<PageOrientationDetector>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<PageOrientationDetector>>();
+
+            var tessDataPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "tessdata"
+            );
+
+            return new PageOrientationDetector(
+                logger,
+                tessDataPath
+            );
+        });
         return services;
     }
 }

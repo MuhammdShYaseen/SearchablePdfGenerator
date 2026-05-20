@@ -9,10 +9,14 @@ namespace SearchablePdfGenerator.Infrastructure;
 public sealed class PdfPigRenderer : IPdfRenderer
 {
     private readonly ILogger<PdfPigRenderer> _logger;
+    private readonly PageOrientationDetector _orientationDetector;
 
-    public PdfPigRenderer(ILogger<PdfPigRenderer> logger)
+    public PdfPigRenderer(
+        ILogger<PdfPigRenderer> logger,
+        PageOrientationDetector orientationDetector)
     {
         _logger = logger;
+        _orientationDetector = orientationDetector;
     }
 
     public int GetPageCount(string pdfPath)
@@ -22,10 +26,10 @@ public sealed class PdfPigRenderer : IPdfRenderer
     }
 
     public async Task<byte[]> RenderPageToImageAsync(
-        string pdfPath,
-        int pageIndex,
-        int dpi,
-        CancellationToken ct = default)
+    string pdfPath,
+    int pageIndex,
+    int dpi,
+    CancellationToken ct = default)
     {
         return await Task.Run(() =>
         {
@@ -34,7 +38,11 @@ public sealed class PdfPigRenderer : IPdfRenderer
             int pageNumber = pageIndex + 1;
             float scale = dpi / 72f;
 
-            _logger.LogDebug("Rendering page {Page} at {Dpi} DPI", pageNumber, dpi);
+            _logger.LogDebug(
+                "Rendering page {Page} at {Dpi} DPI",
+                pageNumber,
+                dpi
+            );
 
             using var doc = PdfDocument.Open(
                 pdfPath,
@@ -43,16 +51,68 @@ public sealed class PdfPigRenderer : IPdfRenderer
 
             doc.AddSkiaPageFactory();
 
-            // ✅ clearColor هو SKColor? وليس RGBColor
             using var bitmap = doc.GetPageAsSKBitmap(
                 pageNumber,
                 scale,
-                SKColors.White   // SKColor وليس RGBColor
+                SKColors.White
             );
 
-            _logger.LogDebug("Page {Page}: {W}×{H} px", pageNumber, bitmap.Width, bitmap.Height);
+            _logger.LogDebug(
+                "Page {Page} rendered: {W}×{H} px",
+                pageNumber,
+                bitmap.Width,
+                bitmap.Height
+            );
 
-            return EncodeToPng(bitmap);
+            // ── الصورة الأصلية ──
+            byte[] current = EncodeToPng(bitmap);
+
+            // حد أقصى لمنع loop لا نهائي
+            const int maxAttempts = 4;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                int rotation = _orientationDetector.Detect(current);
+
+                _logger.LogDebug(
+                    "Page {Page}: attempt {Attempt} -> detected rotation {Rotation}°",
+                    pageNumber,
+                    attempt,
+                    rotation
+                );
+
+                // مستقيمة
+                if (rotation == 0)
+                {
+                    _logger.LogInformation(
+                        "Page {Page}: orientation normalized",
+                        pageNumber
+                    );
+
+                    return current;
+                }
+
+                // صحح الدوران
+                _logger.LogInformation(
+                    "Page {Page}: rotating {Rotation}°",
+                    pageNumber,
+                    rotation
+                );
+
+                current = PageOrientationDetector.RotateImage(
+                    current,
+                    rotation
+                );
+            }
+
+            _logger.LogWarning(
+                "Page {Page}: max rotation attempts reached",
+                pageNumber
+            );
+
+            return current;
 
         }, ct);
     }
