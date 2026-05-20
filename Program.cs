@@ -69,7 +69,7 @@ var options = new OcrOptions
     RenderDpi = 300,
     MinConfidence = 35f,
     Deskew = true,
-    KeepOriginalBackup = true,
+    KeepOriginalBackup = false,
 };
 
 // ── Progress Reporting ──

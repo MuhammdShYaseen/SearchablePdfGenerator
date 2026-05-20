@@ -56,7 +56,7 @@ public sealed class OcrOptions
     public bool Deskew { get; init; } = true;
 
     /// <summary>حفظ نسخة احتياطية من الملف الأصلي</summary>
-    public bool KeepOriginalBackup { get; init; } = true;
+    public bool KeepOriginalBackup { get; init; } = false;
 }
 
 /// <summary>

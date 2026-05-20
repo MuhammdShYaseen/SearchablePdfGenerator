@@ -72,6 +72,11 @@ public interface ISearchablePdfService
     );
 }
 
+public interface IImagePreprocessingService
+{
+    Task <byte[]> ProcessForOcr(byte[] imageBytes);
+}
+
 /// <summary>تقدم العملية — للـ UI أو logging</summary>
 public sealed record OcrProgress(
     int CurrentPage,

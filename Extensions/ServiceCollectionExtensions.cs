@@ -37,7 +37,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IText7PdfBuilder>();
         services.AddSingleton<ISearchablePdfService, SearchablePdfService>();
-
+        services.AddSingleton<IImagePreprocessingService, OpenCvImagePreprocessingService>();
         return services;
     }
 }
